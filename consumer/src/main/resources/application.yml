@@ -1,0 +1,8 @@
+server:
+  port: 8180
+provider:
+  ribbon:
+    NFLoadBalancerRuleClassName: com.example.config.NacosWeightedRule
+#    基于权重算法
+#    com.netflix.loadbalancer.RandomRule
+#    此时使用随机算法的负载均衡

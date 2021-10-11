@@ -1,0 +1,102 @@
+b站视频：楠哥教你学Java  Spring Cloud Alibaba全面讲解
+
+参考 https://spring-cloud-alibaba-group.github.io/github-pages/hoxton/en-us/index.html#_spring_cloud_alibaba_nacos_discovery
+参考 https://nacos.io/zh-cn/docs/quick-start.html
+=======================
+进入nacos，在终端写
+cd IdeaProjects/
+cd nacos2.0.3/
+ls
+pwd
+cd bin/
+ls
+sh startup.sh -m standalone
+
+关闭
+sh shutdown.sh
+
+输入网址：http://localhost:8848/nacos/
+账号密码都是：nacos
+
+=========================
+nacos
+provider 是服务注册  通过更改yml文件来改变服务实例 启动启动项（不断改yml端口号） 刷新http://localhost:8848/nacos/ 查看服务管理--服务列表
+consumer 是服务发现，把provider那三个服务读出来   启动启动项 http://localhost:8180/instances
+                                                       http://localhost:8180/index    返回结果（端口号随机）：调用了端口为：8081的服务，返回结果是：8081
+
+RestTemplate可以写在config也可以写在启动类
+=========================
+ 🌟 在consumer项目中
+Ribbon 已经在maven里面，无需配置，只是让它启动即可
+how -- 在ConsumerConfiguration里面的RestTemplate加注解@LoadBalanced--直接把Ribbon加载进来
+       在ConsumerController写方法  实现一样的效果（默认轮询算法，依次调用）
+       如果要使用负载均衡的其它算法：随机算法、基于权重算法
+       在yml修改
+
+       #随机算法
+       provider:
+         ribbon:
+           NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule
+        访问 http://localhost:8180/index
+
+
+       #基于权重算法
+       1、在config写基于权重算法的配置文件NacosWeightedRule
+       2、provider:
+           ribbon:
+             NFLoadBalancerRuleClassName: com.example.config.NacosWeightedRule
+      类名是copy reference
+      访问 http://localhost:8180/index
+=========================
+Sentinel 服务限流降级
+雪崩效应
+解决方案（缓解服务器压力）
+1、设置线程超时
+2、设置限流
+3、熔断器（类比保险丝） Sentinel（Spring cloud alibaba）、Hystrix（第一代Spring cloud）
+  降级（只提供部分功能，不是全部功能）
+  限流（只接受系统能承载的访问量，超出就抛异常）
+  熔断 （调用外部系统，外部系统出现问题，熔断）
+
+ 🌟 以provider工程为例
+
+  pom.xml 引入依赖
+  <!--引入Sentinel 流量控制-->  spring-cloud-starter-alibaba-sentinel
+  <!--引入监控指标-->  spring-boot-starter-actuator
+  在yml文件中
+  监控provider所有请求
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: '*'
+
+   配置 sentinel端口
+      sentinel:
+         transport:
+           dashboard: localhost:8080
+
+下载sentinel-dashboard-1.8.2 用终端打开
+cd IdeaProjects/
+ls
+java -jar sentinel-dashboard-1.8.2.jar
+启动sentinel
+访问：http://localhost:8080/
+账号密码：sentinel
+
+
+终端启动nacos ==> 访问：http://localhost:8848/nacos/ ==> 启动provider启动项 ==>  刷新http://localhost:8848/nacos/网页
+终端启动sentinel  ==>访问：http://localhost:8080/
+访问localhost:8083/index 多次刷新
+此时，刷新 http://localhost:8080/ 会有数据provider
+查看dashboard的 簇点链路
+
+流控模式：直接（针对/index），关联（/list出问题，但是是/index背锅，在test里面测试） ==>直接对controller层限制流、保护
+        链路 ==>直接对service层限制流、保护（但是入口是controller，也就是说访问地址是controller） ，但是sentinel版本高于1.6.3，链路不生效
+              pom引入依赖
+⚠️⚠️⚠️⚠️⚠️ 链路（09流控模式第26min）操作失败， pom引入依赖不成功，没有试验
+=========================
+流控效果：
+  排队等待：抛异常动作延后（给多一次机会）
+          超时时间设为300毫秒，单机阈值设为1
+          在test里面测试

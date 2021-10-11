@@ -1,0 +1,20 @@
+spring:
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+#        nacos完成注册
+    sentinel:
+      transport:
+        dashboard: localhost:8080
+#     sentinel完成流量控制
+  application:
+    name: provider
+server:
+  port: 8083
+#  provider所有请求都会监控 用通配符*表示所有
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
